@@ -1,0 +1,69 @@
+APP = calcium_sparks
+DOUBLE = 1
+DEBUG = 0
+
+ifeq ($(STREAM),1)
+STREAMFLAG = -DSTREAM
+endif
+ifeq ($(OMP),1)
+OMPFLAG = -fopenmp
+endif
+
+ifeq ($(MANUAL),1)
+MANUALFLAG = -DMANUAL
+endif
+
+ifeq ($(ALPHA),1)
+ALPHAFLAG = -DALPHA
+endif
+
+ifeq ($(MANUAL),2)
+MANUALFLAG = -DMANUAL -DMANUAL2
+endif
+
+# Compiler options
+CC = mpicc.mpich -cc=gcc-8
+
+#LIB_DIRS = -L/opt/hdf5/1.10.4/lib
+CFLAGS = -Ofast -fPIC -Wall -Wno-comment -Wno-unknown-pragmas -Wformat=0 -march=native -std=gnu11 -fgnu89-inline -I/usr/lib/x86_64-linux-gnu/hdf5/mpich/include 
+LIB_DIRS = -L/usr/lib/x86_64-linux-gnu/hdf5/mpich/
+
+LIBS = -lhdf5 -lm
+
+# Source files
+HEADERS = utils.h options.h geometry.h species.h types.h boundaryfluxes.h mtwist.h basefluxinfo.h
+SOURCES = utils.c options.c geometry.c species.c boundaryfluxes.c mtwist.c $(APP).c 
+
+# Source directories
+SRC_DIR = src/
+OBJ_DIR = build/
+BIN_DIR = bin/
+
+# Get object files from sources by swaping .c by .o
+OBJS = $(SOURCES:.c=.o)
+
+# To every file add a prefix with an appropriate directory
+CSRC=$(addprefix $(SRC_DIR),$(SOURCES))
+CHEAD=$(addprefix $(SRC_DIR),$(HEADERS))
+COBJS=$(addprefix $(OBJ_DIR),$(OBJS))
+CAPP=$(addprefix $(BIN_DIR),$(APP))
+
+#Compilation rules
+$(CAPP): $(COBJS)
+	$(CC) $(CFLAGS) $(STREAMFLAG) $(MANUALFLAG) $(ALPHAFLAG) $(OMPFLAG) -DDOUBLE=${DOUBLE} -DDEBUG=${DEBUG} -o $(CAPP)$(APP_SUFFIX) $(COBJS) $(LIB_DIRS) $(LIBS)
+
+$(OBJ_DIR)%.o : $(SRC_DIR)%.c $(CHEAD)
+	$(CC) $(CFLAGS) $(STREAMFLAG) $(MANUALFLAG) $(ALPHAFLAG) $(OMPFLAG) -DDOUBLE=${DOUBLE} -DDEBUG=${DEBUG} $(INC) -c $< -o $@
+
+all: $(COBJS) $(CAPP)
+
+$(COBJS): | $(OBJ_DIR)
+$(OBJ_DIR):
+	mkdir $(OBJ_DIR)
+
+$(CAPP): | $(BIN_DIR)
+$(BIN_DIR):
+	mkdir $(BIN_DIR)
+
+clean:
+	rm $(COBJS) $(CAPP)
